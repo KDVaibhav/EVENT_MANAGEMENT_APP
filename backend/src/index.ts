@@ -5,6 +5,7 @@ import appRouter from "./routes";
 import connectDb from "./db";
 import { seedData } from "./seed";
 dotenv.config();
+const app = express();
 
 const startServer = async () => {
   // Wait for database connection first
@@ -12,8 +13,6 @@ const startServer = async () => {
 
   // Now seed data after connection is established
   await seedData();
-
-  const app = express();
 
   app.use(
     cors({
@@ -28,7 +27,9 @@ const startServer = async () => {
   // Routes
   app.use("/api", appRouter);
 
-  const PORT = process.env.BACKEND_PORT || 4000;
-  app.listen(PORT, () => console.log(`Backend Started on PORT ${PORT}`));
+  // const PORT = process.env.BACKEND_PORT || 4000;
+  // app.listen(PORT, () => console.log(`Backend Started on PORT ${PORT}`));
 };
 startServer().catch(console.error);
+
+export default app;

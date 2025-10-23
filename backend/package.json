@@ -9,7 +9,8 @@
     "start": "node dist/index.js",
     "build": "tsc && tsc-alias",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "vercel-build": "tsc && pnpm install"
+    "vercel-build": "pnpm install && tsc",
+    "vercel-start": "node dist/index.js"
   },
   "keywords": [],
   "author": "",
