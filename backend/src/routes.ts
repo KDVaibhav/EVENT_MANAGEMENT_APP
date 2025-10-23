@@ -198,13 +198,13 @@ const compareEvents = (newEvent: any, oldEvent: any) => {
   return logDescription;
 };
 
-const compareProfiles = (oldProfileIds, newProfileIds) => {
+const compareProfiles = (oldProfileIds: any, newProfileIds: any) => {
   const oldNames = oldProfileIds
-    .map((p) => p.profileName)
+    .map((p: any) => p.profileName)
     .sort()
     .join(", ");
   const newNames = newProfileIds
-    .map((p) => p.profileName)
+    .map((p: any) => p.profileName)
     .sort()
     .join(", ");
 

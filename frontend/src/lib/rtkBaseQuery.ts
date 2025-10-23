@@ -8,7 +8,7 @@ const axiosInstance = axios.create({
   timeout: 10000,
 });
 
-export const rtkBaseQuery: BaseQueryFn = async (args, api, extraOpions) => {
+export const rtkBaseQuery: BaseQueryFn = async (args) => {
   try {
     const result = await axiosInstance(args);
     return { data: result.data };
