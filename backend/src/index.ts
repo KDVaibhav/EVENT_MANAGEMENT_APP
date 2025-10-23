@@ -27,8 +27,8 @@ const startServer = async () => {
   // Routes
   app.use("/api", appRouter);
 
-  // const PORT = process.env.BACKEND_PORT || 4000;
-  // app.listen(PORT, () => console.log(`Backend Started on PORT ${PORT}`));
+  const PORT = process.env.BACKEND_PORT || 4000;
+  app.listen(PORT, () => console.log(`Backend Started on PORT ${PORT}`));
 };
 startServer().catch(console.error);
 
