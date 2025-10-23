@@ -3,13 +3,14 @@ import {
   useAvailableProfileQuery,
   useCreateProfileMutation,
   useGetProfilesQuery,
+  useLazyGetProfileEventsQuery,
 } from "../features/profile/profileApi";
 import {
   setCurrentProfile,
   type Profile,
 } from "../features/profile/profileSlice";
 import { useAppDispatch, useAppSelector } from "../store/hook";
-import { ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Search } from "lucide-react";
 
 export const SelectProfileDropDown = () => {
   const dispatch = useAppDispatch();
@@ -22,7 +23,7 @@ export const SelectProfileDropDown = () => {
   const [debounceNewProfile, setDebounceNewProfile] = useState("");
   const [open, setOpen] = useState(false);
   const [skip, setSkip] = useState(0);
-
+  const [getProfileEvents] = useLazyGetProfileEventsQuery();
   let { data: profiles, isLoading } = useGetProfilesQuery(
     { searchTerm: debounceSearchValue, skip },
     {
@@ -96,8 +97,9 @@ export const SelectProfileDropDown = () => {
     }
   };
 
-  const handleSelectProfile = (profile: Profile) => {
-    dispatch(setCurrentProfile(profile));
+  const handleSelectProfile = async (profile: Profile) => {
+    await getProfileEvents({ profileId: profile._id }).unwrap();
+    dispatch(setCurrentProfile({ profile }));
     setOpen(false);
     setSearchValue("");
   };
@@ -114,7 +116,7 @@ export const SelectProfileDropDown = () => {
 
   return (
     <div
-      className="w-40 sm:w-50 border-[0.5px] rounded relative"
+      className="w-45 sm:w-55 border border-gray-300 rounded relative bg-[#F6F7F9]"
       ref={dropDownRef}
     >
       <div
@@ -129,8 +131,9 @@ export const SelectProfileDropDown = () => {
         <ChevronsUpDown className="w-4" />
       </div>
       {open && (
-        <div className="absolute bg-white rounded shadow w-40 sm:w-50 mt-2 border-[0.5px]">
-          <div>
+        <div className="absolute bg-white rounded text-xs shadow w-45 sm:w-55 mt-1 border z-50 border-gray-300 p-1">
+          <div className="flex gap-1 pl-2 hover:outline-none hover:ring-2 mb-1 hover:ring-purple-200 rounded">
+            <Search className="w-4 g-4" />
             <input
               type="text"
               value={searchValue}
@@ -138,6 +141,7 @@ export const SelectProfileDropDown = () => {
                 setSearchValue(e.target.value);
               }}
               placeholder="Search profiles ..."
+              className="focus:outline-none focus:ring-0"
             />
           </div>
           <div>
@@ -145,33 +149,45 @@ export const SelectProfileDropDown = () => {
             <div
               ref={dropDownContentRef}
               onScroll={handleScroll}
-              className="max-h-30 overflow-y-auto"
+              className="max-h-30 overflow-y-auto space-y-1"
             >
               {profiles?.length > 0 &&
                 profiles.map((profile: Profile) => (
                   <div
                     key={profile._id}
                     onClick={() => handleSelectProfile(profile)}
-                    className="px-2 py-1 hover:bg-gray-100 cursor-pointer"
+                    className={`px-2 py-1 hover:bg-[#6952E0] hover:text-white cursor-pointer rounded ${
+                      profile._id === selectedProfile?._id &&
+                      "bg-[#6952E0] text-white"
+                    } `}
                   >
-                    {profile.profileName}
+                    <span className="flex items-center gap-1">
+                      {profile._id === selectedProfile?._id ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <div className="w-4"></div>
+                      )}
+                      {profile.profileName}
+                    </span>
                   </div>
                 ))}
             </div>
           </div>
           {/* Create New Profile */}
           <div>
-            <div className="flex">
+            <div className="flex p-1 gap-1">
               <input
                 value={newProfile}
                 placeholder="Create Profile"
                 onChange={(e) => setNewProfile(e.target.value)}
-                className={`border ${exists && "border-red-500"} w-full`}
+                className={`border border-gray-300 hover:ring-purple-200 rounded px-2 py-1 ${
+                  exists && "border-red-500"
+                } w-full`}
               />
 
               <button
                 onClick={handleCreateProfile}
-                className="border bg-gray-200 disabled:bg-gray-500 w-1/3 hover:bg-gray-300"
+                className="border bg-[#6952E0] text-white rounded disabled:bg-gray-300 w-1/3 hover:bg-gray-300"
                 disabled={
                   exists || isCreateProfileLoading || isAvailableProfileLoading
                 }
@@ -179,8 +195,8 @@ export const SelectProfileDropDown = () => {
                 Add
               </button>
             </div>
-            <div className="text-red-500">
-              {exists && "Profile name not available"}
+            <div className="text-red-500 text-xs px-1">
+              {exists && "name already taken"}
             </div>
           </div>
         </div>
@@ -188,29 +204,3 @@ export const SelectProfileDropDown = () => {
     </div>
   );
 };
-
-// <select
-// value={selectedProfile}
-// onFocus={() => setOpen(true)}
-// onBlur={() => setOpen(false)}
-// className="border-[0.5px] rounded "
-// onChange={(e) => setSelectedProfile(e.target.value)}
-// >
-// <option value="">Select</option>
-// {profiles &&
-//   profiles.map((profile: Profile) => (
-//     <option key={profile.id} value={profile.id}>
-//       {profile.profileName}
-//     </option>
-//   ))}
-// <option value="admin">Admin</option>
-// </select>
-// {open && (
-// <input
-//   type="text"
-//   placeholder="Search Profile"
-//   value={searchValue}
-//   onChange={(e) => setSearchValue(e.target.value)}
-//   className="border rounded h-8 px-2 w-full"
-// />
-// )}

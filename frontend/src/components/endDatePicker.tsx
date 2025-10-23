@@ -1,7 +1,13 @@
-import { Calendar } from "lucide-react";
+import { Calendar, Clock } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { DayPicker } from "react-day-picker";
 import classNames from "react-day-picker/style.module.css";
+import "react-day-picker/style.css";
+import {
+  formatDisplayDate,
+  formatDisplayTime,
+  formatTimeForInput,
+} from "../lib/dateUtils";
 
 export const EndDatePicker = ({
   startDateTime,
@@ -12,126 +18,271 @@ export const EndDatePicker = ({
   endDateTime: Date;
   setEndDateTime: React.Dispatch<React.SetStateAction<Date>>;
 }) => {
-  const [open, setOpen] = useState(false);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
   const modalRef = useRef<HTMLDivElement | null>(null);
+  const timePickerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const handleClickOutsideModal = (event: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent) => {
       if (
         modalRef.current &&
-        !modalRef.current?.contains(event.target as Node)
+        !modalRef.current.contains(event.target as Node)
       ) {
-        setOpen(false);
+        setIsDatePickerOpen(false);
+      }
+      if (
+        timePickerRef.current &&
+        !timePickerRef.current.contains(event.target as Node)
+      ) {
+        setIsTimePickerOpen(false);
       }
     };
-    const handleClickEsc = (event: KeyboardEvent) => {
-      if (modalRef.current && event.key === "Escape") {
-        setOpen(false);
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsDatePickerOpen(false);
+        setIsTimePickerOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutsideModal);
-    document.addEventListener("keydown", handleClickEsc);
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+
     return () => {
-      document.removeEventListener("mousedown", handleClickOutsideModal);
-      document.removeEventListener("keydown", handleClickEsc);
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
     };
   }, []);
 
+  // Handle date selection
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
 
-    if (date.toDateString() === startDateTime.toDateString()) {
-      const newDateTime = new Date(date);
-      newDateTime.setHours(endDateTime.getHours(), endDateTime.getMinutes());
+    let newEndDate = new Date(date);
 
-      if (newDateTime <= startDateTime) {
-        newDateTime.setHours(
-          endDateTime.getHours() - 1,
-          endDateTime.getMinutes()
+    // if start date and end date are same
+    if (date.toDateString() === startDateTime.toDateString()) {
+      const currentEndTime = new Date(endDateTime);
+
+      // If current end time is before start time, then adjust it to start time + 1 minutes
+      if (currentEndTime <= startDateTime) {
+        const defaultTime = new Date(startDateTime);
+        defaultTime.setMinutes(defaultTime.getMinutes() + 1);
+        newEndDate.setHours(defaultTime.getHours(), defaultTime.getMinutes());
+      } else {
+        newEndDate.setHours(
+          currentEndTime.getHours(),
+          currentEndTime.getMinutes()
         );
       }
-      setEndDateTime(newDateTime);
     } else {
-      setEndDateTime(date);
+      newEndDate.setHours(9, 0);
     }
-    setOpen(false);
+
+    setEndDateTime(newEndDate);
+    setIsDatePickerOpen(false);
   };
 
-  const handleTimeChange = (timeString: string) => {
+  // Handle time selection from dropdown
+  const handleTimeSelect = (hours: number, minutes: number) => {
+    const newEndDateTime = new Date(endDateTime);
+    newEndDateTime.setHours(hours, minutes);
+    setEndDateTime(newEndDateTime);
+    setIsTimePickerOpen(false);
+  };
+
+  // Generate time slots with proper filtering
+  const generateTimeSlots = () => {
+    const slots = [];
+    const isSameDay =
+      endDateTime.toDateString() === startDateTime.toDateString();
+
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        // 30-minute intervals
+        const timeDate = new Date(endDateTime);
+        timeDate.setHours(hour, minute);
+
+        const isDisabled = isSameDay && timeDate <= startDateTime;
+        const isSelected =
+          endDateTime.getHours() === hour &&
+          endDateTime.getMinutes() === minute;
+
+        slots.push({
+          hours: hour,
+          minutes: minute,
+          label: `${hour.toString().padStart(2, "0")}:${minute
+            .toString()
+            .padStart(2, "0")}`,
+          disabled: isDisabled,
+          selected: isSelected,
+        });
+      }
+    }
+
+    return slots;
+  };
+
+  const timeSlots = generateTimeSlots();
+
+  // Handle manual time input
+  const handleManualTimeChange = (timeString: string) => {
+    if (!timeString) return;
+
     const [hours, minutes] = timeString.split(":").map(Number);
-    const newDateTime = new Date(startDateTime);
+
+    if (
+      isNaN(hours) ||
+      isNaN(minutes) ||
+      hours < 0 ||
+      hours > 23 ||
+      minutes < 0 ||
+      minutes > 59
+    ) {
+      return;
+    }
+
+    const newDateTime = new Date(endDateTime);
     newDateTime.setHours(hours, minutes);
 
-    if (newDateTime > startDateTime) {
-      setEndDateTime(newDateTime);
+    // Validate if same day
+    if (
+      endDateTime.toDateString() === startDateTime.toDateString() &&
+      newDateTime <= startDateTime
+    ) {
+      // Auto-correct to start time + 30 minutes
+      const correctedTime = new Date(startDateTime);
+      correctedTime.setMinutes(correctedTime.getMinutes() + 1);
+      newDateTime.setHours(
+        correctedTime.getHours(),
+        correctedTime.getMinutes()
+      );
     }
+
+    setEndDateTime(newDateTime);
   };
 
-  const disabledDays = { before: startDateTime };
-
-  const formatTimeForInput = (date: Date): string => {
-    const hours = date.getHours().toString().padStart(2, "0");
-    const minutes = date.getMinutes().toString().padStart(2, "0");
-    return `${hours}:${minutes}`;
-  };
-
-  const getMaxTime = (): string => {
-    if (startDateTime.toDateString() === endDateTime.toDateString()) {
-      // If same day, max time is endDateTime's time
-      return formatTimeForInput(startDateTime);
-    }
-    return "23:59";
-  };
+  const disabledDays = [{ before: startDateTime }];
+  const isValidSelection = endDateTime > startDateTime;
 
   return (
-    <div className="relative flex text-sm items-center gap-4">
-      <div
-        className="w-2/3 border-[0.5px] h-6 rounded cursor-pointer"
-        ref={modalRef}
-        onClick={() => setOpen(!open)}
-      >
-        <div className="flex gap-2 items-center px-4">
-          <Calendar className="w-4" />
-          <span>{endDateTime.toLocaleDateString()}</span>
+    <div className="relative w-full">
+      <div className="flex gap-2 items-center">
+        {/* Date Picker */}
+        <div className="flex relative w-2/3" ref={modalRef}>
+          <button
+            type="button"
+            onClick={() => {
+              setIsDatePickerOpen(!isDatePickerOpen);
+              setIsTimePickerOpen(false);
+            }}
+            className={`w-full flex items-center gap-2 px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors ${
+              !isValidSelection
+                ? "border-red-300 bg-red-50 text-red-900"
+                : "border-gray-300 hover:border-gray-400 bg-[#F6F7F9]"
+            }`}
+          >
+            <Calendar className="w-4 h-4 flex-shrink-0" />
+            <span className="text-xs truncate">
+              {formatDisplayDate(endDateTime.toISOString())}
+            </span>
+          </button>
+
+          {isDatePickerOpen && (
+            <div className="absolute top-full left-0 mt-1 bg-white shadow-lg rounded-lg p-4 z-50 border min-w-[280px]">
+              <DayPicker
+                mode="single"
+                selected={endDateTime}
+                onSelect={handleDateSelect}
+                disabled={disabledDays}
+                required
+                classNames={classNames}
+                modifiers={{ disabled: disabledDays }}
+                footer={
+                  <div className="mt-3 pt-3 border-t text-xs text-gray-500 space-y-1">
+                    <div>Start: {startDateTime.toLocaleDateString()}</div>
+                    <div className="font-medium">
+                      Selected: {endDateTime.toLocaleDateString()}
+                    </div>
+                  </div>
+                }
+              />
+            </div>
+          )}
         </div>
-        {open && (
-          <div className="absolute bg-white shadow rounded-lg p-2 z-50">
-            <DayPicker
-              animate
-              mode="single"
-              selected={endDateTime}
-              onSelect={handleDateSelect}
-              disabled={disabledDays}
-              required
-              classNames={classNames}
-            />
+
+        {/* Time Picker */}
+        <div className="flex w-1/3 relative" ref={timePickerRef}>
+          <button
+            type="button"
+            onClick={() => {
+              setIsTimePickerOpen(!isTimePickerOpen);
+              setIsDatePickerOpen(false);
+            }}
+            className={`w-full flex items-center gap-2 px-2 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors ${
+              !isValidSelection
+                ? "border-red-300 bg-red-50 text-red-900"
+                : "border-gray-300 hover:border-gray-400 bg-[#F6F7F9]"
+            }`}
+          >
+            <Clock className="w-4 h-4 flex-shrink-0" />
+            <span className="text-xs">
+              {formatDisplayTime(endDateTime.toISOString())}
+            </span>
+          </button>
+
+          {isTimePickerOpen && (
+            <div className="absolute top-full left-0 mt-1 bg-white shadow-lg rounded-lg p-3 z-50 border min-w-[120px] max-h-60 overflow-y-auto">
+              <div className="space-y-1">
+                <div className="mb-1 pb-1 border-b">
+                  <input
+                    type="time"
+                    value={formatTimeForInput(endDateTime)}
+                    onChange={(e) => handleManualTimeChange(e.target.value)}
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-200"
+                    step="300"
+                  />
+                </div>
+                {timeSlots.map((slot) => (
+                  <button
+                    key={slot.label}
+                    type="button"
+                    onClick={() =>
+                      !slot.disabled &&
+                      handleTimeSelect(slot.hours, slot.minutes)
+                    }
+                    disabled={slot.disabled}
+                    className={`w-full px-3 py-2 text-xs rounded text-left transition-colors ${
+                      slot.selected
+                        ? "bg-[#6952E0] text-white"
+                        : slot.disabled
+                        ? "text-gray-400 cursor-not-allowed bg-gray-100"
+                        : "hover:bg-[#6952E0] text-gray-700 hover:text-white"
+                    }`}
+                  >
+                    {`${slot.hours.toString().padStart(2, "0")}:${slot.minutes
+                      .toString()
+                      .padStart(2, "0")}`}
+                  </button>
+                ))}
+              </div>
+
+              {/* Manual time input as fallback */}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Validation and information */}
+      {!isValidSelection && (
+        <div className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+          <div className="flex items-center gap-2">
+            <span>⚠️</span>
+            <span>End time must be after start time</span>
           </div>
-        )}
-      </div>
-      <div className="w-1/3 border-[0.5px] h-6 rounded">
-        <input
-          type="time"
-          value={formatTimeForInput(endDateTime)}
-          onChange={(e) => handleTimeChange(e.target.value)}
-          max={getMaxTime()}
-          className="w-full h-full px-2 rounded"
-          // Add visual indication when time input is constrained
-          style={{
-            backgroundColor:
-              startDateTime.toDateString() === endDateTime.toDateString()
-                ? "#f8f9fa"
-                : "white",
-          }}
-          title={
-            startDateTime.toDateString() === endDateTime.toDateString()
-              ? `Time must be before ${endDateTime.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}`
-              : "Select time"
-          }
-        />
-      </div>
+        </div>
+      )}
     </div>
   );
 };

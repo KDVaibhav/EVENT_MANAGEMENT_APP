@@ -6,7 +6,7 @@ import {
 } from "../features/profile/profileApi";
 import { type Profile } from "../features/profile/profileSlice";
 import { useAppSelector } from "../store/hook";
-import { ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Search } from "lucide-react";
 
 export const ProfileDropDown = ({
   selectedProfileIds,
@@ -119,10 +119,9 @@ export const ProfileDropDown = ({
       console.error("Failed to create profile:", error);
     }
   };
-
   return (
     <div
-      className="w-full border-[0.5px] rounded relative"
+      className="w-full border border-gray-300 bg-[#F6F7F9] rounded relative"
       ref={dropDownRef}
     >
       <div
@@ -137,8 +136,9 @@ export const ProfileDropDown = ({
         <ChevronsUpDown className="w-4" />
       </div>
       {open && (
-        <div className="absolute bg-white text-xs rounded shadow z-50 w-40 sm:w-50 mt-2 border-[0.5px]">
-          <div>
+        <div className="absolute bg-white text-xs rounded shadow z-50 w-45 sm:w-55 mt-1 border border-gray-300 p-1">
+          <div className="flex gap-1 pl-2 hover:outline-none hover:ring-2 mb-1 hover:ring-purple-200 rounded">
+            <Search className="w-4 g-4 " />
             <input
               type="text"
               value={searchValue}
@@ -146,6 +146,7 @@ export const ProfileDropDown = ({
                 setSearchValue(e.target.value);
               }}
               placeholder="Search profiles ..."
+              className="focus:outline-none focus:ring-0"
             />
           </div>
           <div>
@@ -153,16 +154,26 @@ export const ProfileDropDown = ({
             <div
               ref={dropDownContentRef}
               onScroll={handleScroll}
-              className="max-h-30 overflow-y-auto"
+              className="max-h-30 overflow-y-auto space-y-1"
             >
               {profiles?.length > 0 &&
                 profiles.map((profile: Profile) => (
                   <div
                     key={profile._id}
                     onClick={() => handleSelectProfile(profile)}
-                    className="px-2 py-1  hover:bg-gray-100 cursor-pointer"
+                    className={`px-2 py-1 hover:bg-[#6952E0] hover:text-white cursor-pointer rounded ${
+                      selectedProfileIds.includes(profile._id) &&
+                      "bg-[#6952E0] text-white"
+                    }`}
                   >
-                    {profile.profileName}
+                    <span className="flex items-center gap-1">
+                      {selectedProfileIds.includes(profile._id) ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <div className="w-4"></div>
+                      )}
+                      {profile.profileName}
+                    </span>{" "}
                   </div>
                 ))}
             </div>
@@ -170,17 +181,19 @@ export const ProfileDropDown = ({
           {/* Create New Profile */}
           {currentProfile?.profileName === "admin" && (
             <div>
-              <div className="flex">
+              <div className="flex p-1 gap-1 border-t border-gray-300">
                 <input
                   value={newProfile}
                   placeholder="Create Profile"
                   onChange={(e) => setNewProfile(e.target.value)}
-                  className={`border ${exists && "border-red-500"} w-full`}
+                  className={`border border-gray-300 hover:ring-purple-200 rounded px-2 py-1 ${
+                    exists && "border-red-500"
+                  } w-full`}
                 />
 
                 <button
                   onClick={handleCreateProfile}
-                  className="border bg-gray-200 disabled:bg-gray-500 w-1/3 hover:bg-gray-300"
+                  className="border bg-[#6952E0] text-white rounded disabled:bg-gray-300 w-1/3 hover:bg-gray-300"
                   disabled={
                     exists ||
                     isCreateProfileLoading ||
@@ -190,8 +203,8 @@ export const ProfileDropDown = ({
                   Add
                 </button>
               </div>
-              <div className="text-red-500">
-                {exists && "Profile name not available"}
+              <div className="text-red-500 text-xs px-1">
+                {exists && "name already taken"}
               </div>
             </div>
           )}
