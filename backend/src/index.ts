@@ -6,22 +6,29 @@ import connectDb from "./db";
 import { seedData } from "./seed";
 dotenv.config();
 
-connectDb();
-const app = express();
+const startServer = async () => {
+  // Wait for database connection first
+  await connectDb();
 
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URI || "http://localhost:3000",
-    credentials: true,
-  })
-);
+  // Now seed data after connection is established
+  await seedData();
 
-// Body parsing middleware
-app.use(express.json());
-seedData();
+  const app = express();
 
-// Routes
-app.use("/api", appRouter);
+  app.use(
+    cors({
+      origin: process.env.FRONTEND_URI || "http://localhost:3000",
+      credentials: true,
+    })
+  );
 
-const PORT = process.env.BACKEND_PORT || 4000;
-app.listen(PORT, () => console.log(`Backend Started on PORT ${PORT}`));
+  // Body parsing middleware
+  app.use(express.json());
+
+  // Routes
+  app.use("/api", appRouter);
+
+  const PORT = process.env.BACKEND_PORT || 4000;
+  app.listen(PORT, () => console.log(`Backend Started on PORT ${PORT}`));
+};
+startServer().catch(console.error);
