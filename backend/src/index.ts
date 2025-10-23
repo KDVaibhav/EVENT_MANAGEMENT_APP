@@ -53,6 +53,10 @@ const startServer = async () => {
     res.header("Access-Control-Allow-Credentials", "true");
     res.status(200).send();
   });
+
+  app.get("/", (req, res) => {
+    res.json("EMA_BACKEND");
+  });
   app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
     console.log("Origin:", req.headers.origin);
