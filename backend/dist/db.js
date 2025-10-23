@@ -1,9 +1,4 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const mongoose_1 = __importDefault(require("mongoose"));
+import mongoose from "mongoose";
 let cachedConnection = null;
 const connectDb = async () => {
     if (cachedConnection) {
@@ -11,7 +6,7 @@ const connectDb = async () => {
     }
     const connectionString = process.env.MONGO_URI;
     try {
-        const client = await mongoose_1.default.connect(connectionString, {
+        const client = await mongoose.connect(connectionString, {
             bufferCommands: false,
         });
         console.log("Server connected to DB");
@@ -22,4 +17,4 @@ const connectDb = async () => {
         console.error("Error Connecting MongoDB", error);
     }
 };
-exports.default = connectDb;
+export default connectDb;

@@ -1,14 +1,11 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.seedData = void 0;
-const schema_1 = require("./schema");
-const seedData = async () => {
-    const admin = await schema_1.Profile.findOne({
+import { Profile } from "./schema.js";
+export const seedData = async () => {
+    const admin = await Profile.findOne({
         profileName: "admin",
     });
     if (!admin) {
         try {
-            await schema_1.Profile.create({
+            await Profile.create({
                 profileName: "admin",
             });
             console.log("Admin Seeded Successfully");
@@ -20,4 +17,3 @@ const seedData = async () => {
     }
     console.log("Admin Already Seeded");
 };
-exports.seedData = seedData;

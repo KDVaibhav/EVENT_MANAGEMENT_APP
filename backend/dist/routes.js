@@ -1,23 +1,18 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const schema_1 = require("./schema");
-const mongoose_1 = __importDefault(require("mongoose"));
-const router = (0, express_1.Router)();
+import { Router } from "express";
+import { eventZodSchema, Profile, Event, Log } from "./schema.js";
+import mongoose from "mongoose";
+const router = Router();
 router.get("/profile", async (req, res) => {
     const { searchTerm = "", skip = 0, limit = 10 } = req.query;
     const skipNumber = Number(skip);
     const limitNumber = Number(limit);
     try {
-        const profiles = await schema_1.Profile.find({
+        const profiles = await Profile.find({
             profileName: { $regex: searchTerm, $options: "i" },
         })
             .skip(skipNumber)
             .limit(limitNumber);
-        const totalCount = await schema_1.Profile.countDocuments({
+        const totalCount = await Profile.countDocuments({
             profileName: { $regex: searchTerm, $options: "i" },
         });
         const hasMore = skipNumber + limitNumber < totalCount;
@@ -34,11 +29,11 @@ router.post("/profile", async (req, res) => {
         return res.status(400).json({ message: "Invalid profileName" });
     }
     try {
-        await schema_1.Profile.create({
+        await Profile.create({
             profileName: profileName,
         });
-        const profiles = await schema_1.Profile.find().sort({ profileName: 1 }).limit(10);
-        const totalCount = await schema_1.Profile.countDocuments();
+        const profiles = await Profile.find().sort({ profileName: 1 }).limit(10);
+        const totalCount = await Profile.countDocuments();
         const hasMore = 10 < totalCount;
         return res.status(201).json({ profiles, hasMore });
     }
@@ -50,7 +45,7 @@ router.post("/profile", async (req, res) => {
 router.get("/availableProfileName", async (req, res) => {
     const { searchTerm = "" } = req.query;
     try {
-        const exists = await schema_1.Profile.exists({
+        const exists = await Profile.exists({
             profileName: { $regex: `^${searchTerm}$`, $options: "i" },
         });
         return res.status(200).json({ exists: !!exists });
@@ -69,15 +64,15 @@ router.get("/events/:profileId", async (req, res) => {
         return res.status(400).json({ message: "Invalid profileId" });
     }
     try {
-        const profileEvents = await schema_1.Event.find({
-            profileIds: new mongoose_1.default.Types.ObjectId(profileId),
+        const profileEvents = await Event.find({
+            profileIds: new mongoose.Types.ObjectId(profileId),
         })
             .populate("profileIds", "profileName")
             .sort({ startDateTime: 1 })
             .skip(skipNumber)
             .limit(limitNumber);
-        const totalCount = await schema_1.Event.countDocuments({
-            profileIds: new mongoose_1.default.Types.ObjectId(profileId),
+        const totalCount = await Event.countDocuments({
+            profileIds: new mongoose.Types.ObjectId(profileId),
         });
         const hasMore = skipNumber + limitNumber < totalCount;
         return res.status(200).json({ profileEvents, hasMore });
@@ -88,21 +83,21 @@ router.get("/events/:profileId", async (req, res) => {
     }
 });
 router.post("/event", async (req, res) => {
-    const parsed = schema_1.eventZodSchema.safeParse(req.body);
+    const parsed = eventZodSchema.safeParse(req.body);
     if (!parsed.success) {
         return res.status(400).json({ error: parsed.error });
     }
     try {
         const profileId = parsed.data.createdBy;
-        await schema_1.Event.create(parsed.data);
-        const profileEvents = await schema_1.Event.find({
-            profileIds: new mongoose_1.default.Types.ObjectId(profileId),
+        await Event.create(parsed.data);
+        const profileEvents = await Event.find({
+            profileIds: new mongoose.Types.ObjectId(profileId),
         })
             .populate("profileIds", "profileName")
             .sort({ startDateTime: 1 })
             .limit(10);
-        const totalCount = await schema_1.Event.countDocuments({
-            profileIds: new mongoose_1.default.Types.ObjectId(profileId),
+        const totalCount = await Event.countDocuments({
+            profileIds: new mongoose.Types.ObjectId(profileId),
         });
         const hasMore = 10 < totalCount;
         return res.status(201).json({ profileEvents, hasMore });
@@ -118,7 +113,7 @@ router.delete("/event", async (req, res) => {
         return res.status(400).json({ message: "Invalid eventId" });
     }
     try {
-        await schema_1.Event.deleteOne({ eventId });
+        await Event.deleteOne({ eventId });
         return res.status(200).json({ message: "Event Deleted Successfully" });
     }
     catch (error) {
@@ -128,17 +123,17 @@ router.delete("/event", async (req, res) => {
 });
 router.put("/event/:eventId", async (req, res) => {
     const { eventId } = req.params;
-    const parsed = schema_1.eventZodSchema.safeParse(req.body);
+    const parsed = eventZodSchema.safeParse(req.body);
     const currentProfileId = req.body.currentProfileId;
     if (!parsed.success) {
         return res.status(400).json({ error: parsed.error });
     }
     try {
-        let oldEvent = await schema_1.Event.findById(eventId).populate("profileIds", "profileName");
+        let oldEvent = await Event.findById(eventId).populate("profileIds", "profileName");
         if (!oldEvent) {
             return res.status(404).json({ message: "Event not found" });
         }
-        let newEvent = await schema_1.Event.findByIdAndUpdate(eventId, parsed.data, {
+        let newEvent = await Event.findByIdAndUpdate(eventId, parsed.data, {
             new: true,
         }).populate("profileIds", "profileName");
         if (!newEvent) {
@@ -147,7 +142,7 @@ router.put("/event/:eventId", async (req, res) => {
         const descriptions = compareEvents(newEvent, oldEvent);
         if (descriptions && descriptions.length > 0) {
             const logPromises = descriptions.map(async (description) => {
-                await schema_1.Log.create({
+                await Log.create({
                     eventId: newEvent._id,
                     description: description,
                     dateTime: parsed.data.updatedAt,
@@ -155,13 +150,13 @@ router.put("/event/:eventId", async (req, res) => {
             });
             await Promise.all(logPromises);
         }
-        const profileEvents = await schema_1.Event.find({
+        const profileEvents = await Event.find({
             profileIds: { $in: [currentProfileId] },
         })
             .populate("profileIds", "profileName")
             .sort({ startDateTime: 1 })
             .limit(10);
-        const totalCount = await schema_1.Event.countDocuments({
+        const totalCount = await Event.countDocuments({
             profileIds: { $in: [currentProfileId] },
         });
         const hasMore = 10 < totalCount;
@@ -212,14 +207,14 @@ router.get("/event/:eventId/logs", async (req, res) => {
         return res.status(400).json({ message: "Invalid EventId" });
     }
     try {
-        const eventLogs = await schema_1.Log.find({
-            eventId: new mongoose_1.default.Types.ObjectId(eventId),
+        const eventLogs = await Log.find({
+            eventId: new mongoose.Types.ObjectId(eventId),
         })
             .sort({ createdAt: -1 })
             .skip(skipNumber)
             .limit(limitNumber);
-        const totalCount = await schema_1.Log.countDocuments({
-            eventId: new mongoose_1.default.Types.ObjectId(eventId),
+        const totalCount = await Log.countDocuments({
+            eventId: new mongoose.Types.ObjectId(eventId),
         });
         const hasMore = skipNumber + limitNumber < totalCount;
         return res.status(200).json({ eventLogs, hasMore });
@@ -229,4 +224,4 @@ router.get("/event/:eventId/logs", async (req, res) => {
         return res.status(500).json({ message: "Error Fetching Logs" });
     }
 });
-exports.default = router;
+export default router;
