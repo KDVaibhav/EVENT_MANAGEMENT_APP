@@ -57,6 +57,18 @@ const startServer = async () => {
   app.get("/", (req, res) => {
     res.json("EMA_BACKEND");
   });
+
+  app.get("/debug-env", (req, res) => {
+    res.json({
+      hasMongoDbUri: !!process.env.MONGODB_URI,
+      hasMongoUri: !!process.env.MONGO_URI,
+      nodeEnv: process.env.NODE_ENV,
+      frontendUri: process.env.FRONTEND_URI,
+      // Don't log the actual connection string for security
+      mongoUriLength: process.env.MONGO_URI?.length || 0,
+      mongoUriStartsWith: process.env.MONGO_URI?.substring(0, 20) || "none",
+    });
+  });
   app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
     console.log("Origin:", req.headers.origin);
