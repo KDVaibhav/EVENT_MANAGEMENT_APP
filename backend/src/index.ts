@@ -9,10 +9,14 @@ const app = express();
 
 const startServer = async () => {
   // Wait for database connection first
+  console.log("🔄 Connecting to database...");
   await connectDb();
 
   // Now seed data after connection is established
+  console.log("🌱 Seeding data...");
   await seedData();
+
+  console.log("✅ Database setup completed");
 
   const allowedOrigins = [
     process.env.FRONTEND_URI,
@@ -54,8 +58,21 @@ const startServer = async () => {
     res.status(200).send();
   });
 
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    console.log("Origin:", req.headers.origin);
+    console.log("Headers:", req.headers);
+    next();
+  });
+
+  app.use(express.json());
+
   app.get("/", (req, res) => {
-    res.json("EMA_BACKEND");
+    res.json({
+      message: "EMA_BACKEND",
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+    });
   });
 
   app.get("/debug-env", (req, res) => {
@@ -69,22 +86,6 @@ const startServer = async () => {
       mongoUriStartsWith: process.env.MONGO_URI?.substring(0, 20) || "none",
     });
   });
-  app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-    console.log("Origin:", req.headers.origin);
-    console.log("Headers:", req.headers);
-    next();
-  });
-
-  app.use(
-    cors({
-      origin: process.env.FRONTEND_URI || "http://localhost:3000",
-      credentials: true,
-    })
-  );
-
-  // Body parsing middleware
-  app.use(express.json());
 
   // Routes
   app.use("/api", appRouter);
